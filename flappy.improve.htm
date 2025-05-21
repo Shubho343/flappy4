@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>4x4 Tic Tac Toe</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      margin-top: 10px;
+      color: #333;
+    }
+    .scoreboard, .difficulty {
+      margin: 15px;
+    }
+    #game {
+      display: grid;
+      grid-template-columns: repeat(4, 80px);
+      gap: 10px;
+      justify-content: center;
+      margin: 20px auto;
+    }
+    .cell {
+      width: 80px;
+      height: 80px;
+      background: #fff;
+      border: 2px solid #333;
+      font-size: 2em;
+      line-height: 80px;
+      cursor: pointer;
+      text-align: center;
+      color: #333;
+      transition: background-color 0.3s ease;
+    }
+    .cell:hover {
+      background-color: #ddd;
+    }
+    .cell.disabled {
+      pointer-events: none;
+      background-color: #f0f0f0;
+    }
+    button {
+      padding: 10px 20px;
+      margin-top: 20px;
+      cursor: pointer;
+      font-size: 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    select {
+      font-size: 16px;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>4x4 Tic Tac Toe</h1>
+
+<div class="scoreboard">
+  <strong>Player: <span id="playerScore">0</span></strong> |
+  <strong>AI: <span id="aiScore">0</span></strong>
+</div>
+
+<div class="difficulty">
+  Difficulty: 
+  <select id="difficulty">
+    <option value="easy">Easy</option>
+    <option value="medium">Medium</option>
+    <option value="hard">Hard</option>
+  </select>
+</div>
+
+<div id="game"></div>
+
+<button onclick="resetGame()">Reset Game</button>
+
+<script>
+  const gameBoard = document.getElementById("game");
+  const playerScoreEl = document.getElementById("playerScore");
+  const aiScoreEl = document.getElementById("aiScore");
+  const difficultySelect = document.getElementById("difficulty");
+
+  let board = Array(16).fill("");
+  let playerTurn = true;
+  let playerScore = 0;
+  let aiScore = 0;
+
+  function createBoard() {
+    gameBoard.innerHTML = "";
+    board = Array(16).fill("");
+    for (let i = 0; i < 16; i++) {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      cell.dataset.index = i;
+      cell.addEventListener("click", handlePlayerMove);
+      gameBoard.appendChild(cell);
+    }
+  }
+
+  function handlePlayerMove(e) {
+    const index = e.target.dataset.index;
+    if (board[index] === "" && playerTurn) {
+      board[index] = "X";
+      updateBoard();
+      if (checkWin("X")) {
+        playerScore++;
+        updateScore();
+        alert("You win!");
+        disableBoard();
+        return;
+      } else if (board.every(cell => cell !== "")) {
+        alert("It's a tie!");
+        return;
+      }
+      playerTurn = false;
+      setTimeout(aiMove, 500);
+    }
+  }
+
+  function aiMove() {
+    let move;
+    const difficulty = difficultySelect.value;
+    if (difficulty === "easy") {
+      move = getRandomMove();
+    } else if (difficulty === "medium") {
+      move = getMediumMove();
+    } else {
+      move = getBestMove();
+    }
+
+    if (move !== null) {
+      board[move] = "O";
+      updateBoard();
+      if (checkWin("O")) {
+        aiScore++;
+        updateScore();
+        alert("AI wins!");
+        disableBoard();
+        return;
+      } else if (board.every(cell => cell !== "")) {
+        alert("It's a tie!");
+        return;
+      }
+    }
+
+    playerTurn = true;
+  }
+
+  function getRandomMove() {
+    const empty = board.map((val, idx) => val === "" ? idx : null).filter(v => v !== null);
+    return empty[Math.floor(Math.random() * empty.length)];
+  }
+
+  function getMediumMove() {
+    for (let i = 0; i < 16; i++) {
+      if (board[i] === "") {
+        board[i] = "O";
+        if (checkWin("O")) {
+          board[i] = "";
+          return i;
+        }
+        board[i] = "";
+      }
+    }
+    for (let i = 0; i < 16; i++) {
+      if (board[i] === "") {
+        board[i] = "X";
+        if (checkWin("X")) {
+          board[i] = "";
+          return i;
+        }
+        board[i] = "";
+      }
+    }
+    return getRandomMove();
+  }
+
+  function getBestMove() {
+    let bestScore = -Infinity;
+    let move = null;
+    for (let i = 0; i < 16; i++) {
+      if (board[i] === "") {
+        board[i] = "O";
+        let score = minimax(board, 0, false, -Infinity, Infinity);
+        board[i] = "";
+        if (score > bestScore) {
+          bestScore = score;
+          move = i;
+        }
+      }
+    }
+    return move;
+  }
+
+  function minimax(boardState, depth, isMaximizing, alpha, beta) {
+    if (checkWin("O", boardState)) return 10 - depth;
+    if (checkWin("X", boardState)) return depth - 10;
+    if (boardState.every(cell => cell !== "")) return 0;
+
+    if (isMaximizing) {
+      let best = -Infinity;
+      for (let i = 0; i < 16; i++) {
+        if (boardState[i] === "") {
+          boardState[i] = "O";
+          best = Math.max(best, minimax(boardState, depth + 1, false, alpha, beta));
+          boardState[i] = "";
+          alpha = Math.max(alpha, best);
+          if (beta <= alpha) break;
+        }
+      }
+      return best;
+    } else {
+      let best = Infinity;
+      for (let i = 0; i < 16; i++) {
+        if (boardState[i] === "") {
+          boardState[i] = "X";
+          best = Math.min(best, minimax(boardState, depth + 1, true, alpha, beta));
+          boardState[i] = "";
+          beta = Math.min(beta, best);
+          if (beta <= alpha) break;
+        }
+      }
+      return best;
+    }
+  }
+
+  function updateBoard() {
+    document.querySelectorAll(".cell").forEach((cell, i) => {
+      cell.textContent = board[i];
+      if (board[i] !== "") cell.classList.add("disabled");
+    });
+  }
+
+  function updateScore() {
+    playerScoreEl.textContent = playerScore;
+    aiScoreEl.textContent = aiScore;
+  }
+
+  function disableBoard() {
+    document.querySelectorAll(".cell").forEach(cell => cell.classList.add("disabled"));
+  }
+
+  function resetGame() {
+    playerTurn = true;
+    createBoard();
+  }
+
+  function checkWin(player, customBoard = board) {
+    const lines = [
+      [0,1,2,3], [4,5,6,7], [8,9,10,11], [12,13,14,15], // rows
+      [0,4,8,12], [1,5,9,13], [2,6,10,14], [3,7,11,15], // columns
+      [0,5,10,15], [3,6,9,12] // diagonals
+    ];
+    return lines.some(line => line.every(index => customBoard[index] === player));
+  }
+
+  createBoard(); // Initialize the game
+</script>
+
+</body>
+</html>
